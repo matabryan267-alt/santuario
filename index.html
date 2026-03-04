@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Santuario de Dios - Acceso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;400;800&display=swap');
+
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; }
+
+        /* Fondo de Auroras Animadas */
+        .aurora-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 20% 30%, #1e1b4b 0%, transparent 40%),
+                        radial-gradient(circle at 80% 70%, #1e293b 0%, transparent 40%),
+                        radial-gradient(circle at 50% 50%, #0f172a 0%, 100%);
+            overflow: hidden;
+        }
+
+        .aurora-item {
+            position: absolute; width: 600px; height: 600px;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.2;
+            animation: move 20s infinite alternate;
+        }
+
+        @keyframes move {
+            from { transform: translate(-10%, -10%); }
+            to { transform: translate(20%, 20%); }
+        }
+
+        /* Animaciones */
+        @keyframes reveal {
+            from { opacity: 0; transform: translateY(20px); filter: blur(10px); }
+            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+
+        .animate-reveal { animation: reveal 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        
+        .logo-pulse {
+            animation: pulse-logo 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-logo {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(59,130,246,0.2)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 50px rgba(59,130,246,0.5)); }
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+    </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen p-4 overflow-hidden">
+    
+    <div class="aurora-bg">
+        <div class="aurora-item bg-blue-600" style="top: -10%; left: -10%;"></div>
+        <div class="aurora-item bg-indigo-800" style="bottom: -10%; right: -10%; animation-delay: -5s;"></div>
+    </div>
+
+    <div id="splash" class="fixed inset-0 z-50 bg-[#020617] flex flex-col items-center justify-center transition-all duration-1000">
+        <img src="https://i.ibb.co/mC64j5T6/Adobe-Express-file-1.png" class="w-64 h-64 object-contain logo-pulse">
+        <div class="mt-8 flex flex-col items-center">
+            <h2 class="text-white font-extralight tracking-[0.8em] uppercase text-[10px] mb-2">Santuario de Dios</h2>
+            <div class="w-12 h-[1px] bg-blue-500/50"></div>
+        </div>
+    </div>
+
+    <div id="login-card" class="opacity-0 glass p-10 rounded-[50px] shadow-2xl w-full max-w-sm text-center relative overflow-hidden">
+        
+        <div class="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/10 blur-3xl rounded-full"></div>
+
+        <div class="relative z-10">
+            <div class="mb-8">
+                <img src="https://i.ibb.co/mC64j5T6/Adobe-Express-file-1.png" class="w-32 h-32 mx-auto drop-shadow-2xl">
+            </div>
+
+            <h1 class="text-3xl font-black text-white mb-2 tracking-tighter">BIENVENIDO</h1>
+            <p class="text-slate-400 text-[9px] font-bold uppercase tracking-[0.3em] mb-10">Conectando Fe y Comunidad</p>
+
+            <div class="space-y-6">
+                <div class="group relative">
+                    <input type="password" id="clave" placeholder="Introduce tu clave secreta" 
+                        class="w-full p-5 rounded-3xl bg-slate-900/60 border border-slate-700/50 text-white text-center focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all placeholder:text-slate-600 font-medium">
+                </div>
+                
+                <button onclick="entrar()" 
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold p-5 rounded-3xl transition-all active:scale-95 shadow-2xl shadow-blue-900/40 uppercase tracking-widest text-xs flex items-center justify-center gap-3 group">
+                    Ingresar al Sistema
+                    <span class="group-hover:translate-x-1 transition-transform">→</span>
+                </button>
+            </div>
+
+   <p id="error" style="display: none;" class="text-red-400 text-[10px] mt-8 font-black bg-red-500/10 py-4 rounded-2xl border border-red-500/20 uppercase tracking-widest animate-pulse relative z-50">
+                ⚠️ La clave ingresada es incorrecta
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Control del Splash Screen
+       window.onload = () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash');
+                const card = document.getElementById('login-card');
+                
+                splash.style.opacity = '0';
+                // Esto quita la capa azul por completo para que no tape nada
+                setTimeout(() => { splash.style.display = 'none'; }, 1000); 
+                
+                card.classList.add('animate-reveal');
+                card.style.opacity = '1';
+            }, 3000);
+        };
+
+      function entrar() {
+            const claveInput = document.getElementById('clave');
+            const clave = claveInput.value;
+            const errorMsg = document.getElementById('error');
+            const card = document.getElementById('login-card');
+
+            const claveLideres = "Lider2026"; 
+            const clavePastor = "Santuario2026"; 
+
+            if (clave === claveLideres) {
+                window.location.href = "formulario.html"; 
+            } 
+            else if (clave === clavePastor) {
+                window.location.href = "pastor.html";
+            } 
+            else {
+                // 1. Mostrar el mensaje
+                errorMsg.style.display = 'block';
+                
+                // 2. Sacudir la tarjeta
+                card.style.animation = 'none';
+                void card.offsetWidth; 
+                card.style.animation = 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both';
+                
+                // 3. Limpiar el cuadro
+                claveInput.value = "";
+                claveInput.focus();
+            }
+        }
+
+// OCULTAR ERROR AL ESCRIBIR
+document.getElementById('clave').addEventListener('input', () => {
+    document.getElementById('error').style.opacity = "0";
+});
+
+// ENTER PARA ENTRAR
+document.getElementById('clave').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') entrar();
+});
+
+        // Estilo de sacudida para error
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        document.getElementById('clave').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') entrar();
+        });
+        // Ocultar error cuando el usuario vuelva a escribir
+        document.getElementById('clave').addEventListener('input', () => {
+            document.getElementById('error').classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

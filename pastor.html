@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Santuario Dash - Panel Pastoral Completo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { background: #0f172a; color: white; font-family: system-ui, sans-serif; scroll-behavior: smooth; }
+        .glass-card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .stat-grid-box { background: #1e293b; border-radius: 12px; padding: 10px; border: 1px solid #334155; text-align: center; }
+        .label-micro { font-size: 8px; text-transform: uppercase; color: #94a3b8; font-weight: 800; letter-spacing: 0.5px; }
+        .val-total { font-size: 16px; font-weight: 900; display: block; }
+        .reporte-item { border-left: 4px solid #3b82f6; background: #1e293b; transition: all 0.2s; }
+        .reporte-item:hover { transform: translateY(-2px); border-left-color: #60a5fa; }
+        /* Contenedor Flotante */
+        nav {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 6px;
+            border-radius: 20px;
+            display: flex;
+            gap: 8px;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Botones Elegantes */
+        .btn-nav {
+            flex: 1;
+            padding: 12px 5px;
+            border-radius: 15px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            border: none;
+            background: transparent;
+        }
+
+        /* Botón Activo (El que resalta) */
+        .btn-nav.active {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            transform: scale(1.02);
+        }
+
+        .btn-nav i { font-size: 16px; } /* Para los emojis o iconos */
+       
+    </style>
+</head>
+<body class="p-2 sm:p-4 max-w-2xl mx-auto">
+
+<nav>
+    <button onclick="cambiarSeccion('inicio')" id="nav-inicio" class="btn-nav active">
+        <span>📊</span>
+        <span>Semana</span>
+    </button>
+    <button onclick="cambiarSeccion('analisis')" id="nav-analisis" class="btn-nav">
+        <span>📈</span>
+        <span>Análisis</span>
+    </button>
+    <button onclick="cambiarSeccion('mensual')" id="nav-mensual" class="btn-nav">
+        <span>🗓️</span>
+        <span>Mensual</span>
+    </button>
+</nav>
+
+    <div id="sec-inicio">
+        <div class="bg-gradient-to-br from-blue-700 to-blue-900 rounded-[32px] p-6 shadow-2xl mb-6 border border-blue-400/30">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-[10px] text-blue-200 uppercase font-black tracking-widest">Asistencia Global</p>
+                    <h2 id="total-general-suma" class="text-5xl font-black text-white">0</h2>
+                </div>
+                <button onclick="exportarExcel()" class="bg-white/10 hover:bg-white/20 p-2 rounded-xl text-xs font-bold uppercase backdrop-blur-md">Excel 📥</button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-black/20 p-2 rounded-xl"><span class="label-micro text-blue-300">Hnos Efec.</span><span id="sum-efectivos" class="val-total">0</span></div>
+                <div class="bg-black/20 p-2 rounded-xl"><span class="label-micro text-blue-300">Hnos Invit.</span><span id="sum-invitados" class="val-total">0</span></div>
+                <div class="bg-black/20 p-2 rounded-xl"><span class="label-micro text-yellow-400">Convertidos</span><span id="sum-convertidos" class="val-total text-yellow-400">0</span></div>
+                
+                <div class="bg-black/20 p-2 rounded-xl"><span class="label-micro text-green-400">Niños Cris.</span><span id="sum-ninos-c" class="val-total">0</span></div>
+                <div class="bg-black/20 p-2 rounded-xl"><span class="label-micro text-green-400">Niños Amig.</span><span id="sum-ninos-a" class="val-total">0</span></div>
+                <div class="bg-black/20 p-2 rounded-xl"><span class="label-micro text-purple-400">Adultos Amig.</span><span id="sum-adultos-a" class="val-total">0</span></div>
+                
+                <div class="bg-black/20 p-2 rounded-xl"><span class="label-micro text-cyan-400">Bautizados</span><span id="sum-bautizados" class="val-total">0</span></div>
+                <div class="bg-black/20 p-2 rounded-xl"><span class="label-micro text-orange-400">Nuevos Cre.</span><span id="sum-nuevos" class="val-total">0</span></div>
+                <div class="bg-black/20 p-2 rounded-xl flex items-center justify-center"><span class="text-[10px] font-black opacity-30 italic">SANTUARIO</span></div>
+            </div>
+        </div>
+<div class="px-2 mb-4">
+            <div class="flex gap-2 items-center bg-slate-800/50 p-2 rounded-2xl border border-slate-700 shadow-inner">
+                <div class="flex-1">
+                    <p class="text-[8px] font-black text-slate-500 uppercase ml-2 mb-1 italic">Archivo Histórico</p>
+                    <div class="flex gap-1">
+                        <input type="date" id="fecha-desde" class="bg-slate-900 text-[10px] p-2 rounded-lg border-none text-blue-400 font-bold w-full outline-none">
+                        <input type="date" id="fecha-hasta" class="bg-slate-900 text-[10px] p-2 rounded-lg border-none text-blue-400 font-bold w-full outline-none">
+                    </div>
+                </div>
+                <button onclick="aplicarFiltroFecha()" class="bg-blue-600 self-end px-3 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-transform">Ver</button>
+                <button onclick="cargarTodo()" class="bg-slate-700 self-end px-2 py-2.5 rounded-xl text-[10px] font-black uppercase">↻</button>
+            </div>
+        </div>
+       <h3 class="text-[10px] font-black uppercase text-slate-500 mb-4 tracking-[0.2em] px-2">Informes de Líderes Detallados</h3>
+<div id="lista-detallada" class="space-y-4 mb-10"></div>
+
+<div class="px-2 mt-8 pb-10">
+    <div class="bg-slate-900/60 p-5 rounded-[28px] border border-blue-500/20 shadow-xl">
+        <h3 class="text-[10px] font-black uppercase text-blue-400 mb-4 tracking-[0.2em] italic text-center">Configuración de Líderes Oficiales</h3>
+        <div class="flex gap-2 mb-6">
+            <input type="text" id="nuevoLider" placeholder="Nombre completo..." class="flex-1 bg-slate-800 p-3 rounded-xl border-none outline-none text-xs font-bold text-white focus:ring-2 focus:ring-blue-500">
+            <button onclick="agregarLiderOficial()" class="bg-blue-600 hover:bg-blue-500 px-4 rounded-xl font-black text-[10px] uppercase transition-all shadow-lg active:scale-95">Añadir</button>
+        </div>
+        <div id="lista-lideres-db" class="space-y-2 max-h-48 overflow-y-auto pr-2"></div>
+    </div>
+</div>
+</div>
+        <div id="lista-detallada" class="space-y-4">
+            </div>
+    </div>
+
+    <div id="sec-analisis" class="hidden">
+        <div class="bg-slate-800 p-5 rounded-[24px] border border-slate-700 mb-6">
+            <h3 class="text-xs font-black uppercase text-blue-400 mb-4 italic">Estadistica Semanal</h3>
+            <div class="h-[280px]"><canvas id="chartGlobal"></canvas></div>
+        </div>
+
+        <div class="bg-slate-800 rounded-[24px] p-5 border border-slate-700 mb-6">
+            <h3 class="text-xs font-black uppercase text-slate-400 mb-4">Enfoque de Liderazgo y Acción</h3>
+            <div id="alertas-criticas" class="mb-4"></div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-[10px]">
+                    <thead class="text-slate-500 font-bold uppercase border-b border-slate-700">
+  <tr>
+    <th class="py-2 text-left">Líder</th>
+    <th class="py-2">Ant.</th>
+    <th class="py-2">Act.</th>
+    <th class="py-2">Conv.</th> <th class="py-2 text-right">Estado</th>
+</tr>
+</thead>
+                    <tbody id="tabla-comparativa"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 p-5 rounded-[24px] border border-slate-700">
+            <h3 class="text-xs font-black uppercase text-slate-400 mb-4">Estadistica De Historial Idividual</h3>
+            <select id="selectLider" onchange="dibujarLineaIndividual()" class="w-full bg-slate-900 p-3 rounded-xl border-none outline-none text-xs font-bold text-blue-400 mb-4">
+                <option value="">Selecciona un líder...</option>
+            </select>
+            <div class="h-[200px]"><canvas id="chartIndividual"></canvas></div>
+        </div>
+    </div>
+
+    <div id="sec-mensual" class="hidden">
+        <div class="bg-gradient-to-br from-purple-700 to-indigo-900 rounded-[32px] p-6 shadow-2xl mb-6 border border-purple-400/30">
+            <p class="text-[10px] text-purple-200 uppercase font-black tracking-widest italic">Impacto Acumulado del Mes</p>
+            <h2 id="total-mes" class="text-5xl font-black text-white">0</h2>
+            <p id="nombre-mes" class="text-xs text-purple-200 mt-1 font-bold uppercase"></p>
+        </div>
+
+        <div class="bg-slate-800 p-5 rounded-[24px] border border-slate-700 mb-6">
+            <h3 class="text-xs font-black uppercase text-purple-400 mb-4 italic">Comparativa Mensual por Grupos</h3>
+            <div class="h-[400px]"><canvas id="chartMensual"></canvas><div id="detalle-lider-mes" class="mt-6 hidden border-t border-slate-700 pt-4">
+    <h4 id="det-nombre-lider" class="text-xl font-black text-purple-400 uppercase mb-2"></h4>
+    <div class="bg-slate-900/80 p-4 rounded-2xl border border-purple-500/20 mb-4">
+    <p class="text-[9px] text-slate-500 uppercase font-bold mb-2 italic">Tendencia Mensual del Grupo</p>
+    <div class="h-[150px]"><canvas id="chartDetalleLider"></canvas></div>
+</div>
+    <div id="lista-informes-mes" class="space-y-2">
+        </div>
+</div></div>
+        </div>
+    </div>
+
+    <script>
+        let gDetalleLider; // Variable para la mini gráfica
+        const supabaseUrl = 'https://oowozsrtlesoxghsleyl.supabase.co';
+        const supabaseKey = 'sb_publishable_6YVGWQYZf36tkrSgaW4-Ww_nTTlIM_z';
+        const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        let datosGlobales = [];
+        let gGlobal, gIndividual;
+
+        async function cargarTodo() {
+            const { data, error } = await _supabase.from('reportes').select('*').order('fecha_reporte', { ascending: false });
+            if (error) return console.log(error);
+            datosGlobales = data;
+
+            // --- Lógica de Martes a Martes ---
+            const hoy = new Date();
+            const diaSemana = hoy.getDay(); // 0 es domingo, 2 es martes
+            const diferencia = (diaSemana < 2) ? (diaSemana + 5) : (diaSemana - 2);
+            
+            const ultimoMartes = new Date(hoy);
+            ultimoMartes.setDate(hoy.getDate() - diferencia);
+            ultimoMartes.setHours(0,0,0,0);
+
+            const fechaLimite = ultimoMartes.toISOString().split('T')[0];
+
+            // Solo mostramos y sumamos lo que sea desde el último martes hasta hoy
+            const datosSemana = datosGlobales.filter(r => r.fecha_reporte >= fechaLimite);
+
+            procesarConsolidado(datosSemana); // <--- Aquí está el truco
+            renderizarListaLideres(datosSemana); // <--- Solo muestra lo de la semana
+            prepararAnalisis(); 
+        }
+
+       function procesarConsolidado(datos = datosGlobales) {
+            let s = { t:0, ef:0, in:0, nc:0, na:0, aa:0, ba:0, nv:0, co:0 };
+            
+            // IMPORTANTE: Aquí usamos 'datos' para que las sumas cambien al filtrar
+            datos.forEach(r => {
+                s.t  += (Number(r.total_general) || 0); 
+                s.ef += (Number(r.hnos_efectivos) || 0); 
+                s.in += (Number(r.hnos_invitados) || 0);
+                s.nc += (Number(r.ninos_cristianos) || 0); 
+                s.na += (Number(r.ninos_amigos) || 0); 
+                s.aa += (Number(r.adultos_amigos) || 0);
+                s.ba += (Number(r.bautizados) || 0); 
+                s.nv += (Number(r.nuevos_creyentes) || 0); 
+                s.co += (Number(r.convertidos) || 0);
+            });
+
+            document.getElementById('total-general-suma').innerText = s.t;
+            document.getElementById('sum-efectivos').innerText = s.ef;
+            document.getElementById('sum-invitados').innerText = s.in;
+            document.getElementById('sum-ninos-c').innerText = s.nc;
+            document.getElementById('sum-ninos-a').innerText = s.na;
+            document.getElementById('sum-adultos-a').innerText = s.aa;
+            document.getElementById('sum-bautizados').innerText = s.ba;
+            document.getElementById('sum-nuevos').innerText = s.nv;
+            document.getElementById('sum-convertidos').innerText = s.co;
+        }
+
+       function renderizarListaLideres(datos = datosGlobales) {
+            const lista = document.getElementById('lista-detallada');
+            lista.innerHTML = "";
+            
+            // Si el Pastor filtra y no hay nada, avisamos:
+            if(datos.length === 0) {
+                lista.innerHTML = `<p class="text-center text-slate-500 text-xs py-10 italic">No hay informes en este rango de fechas.</p>`;
+                return;
+            }
+
+            datos.forEach(r => {
+                lista.innerHTML += `
+                <div class="reporte-item p-4 rounded-2xl shadow-lg mb-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="max-w-[70%]">
+                            <h4 class="font-black text-white uppercase text-sm leading-tight break-words">${r.lider}</h4>
+                            <p class="text-[9px] text-blue-400 font-bold uppercase">${r.zona} • ${r.fecha_reporte}</p>
+                        </div>
+                        <div class="bg-blue-600 px-3 py-1 rounded-lg text-center min-w-[60px]">
+                            <span class="block text-[7px] font-black uppercase text-blue-100 italic">TOTAL</span>
+                            <span class="block text-lg font-black text-white leading-none">${r.total_general}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="stat-grid-box"><span class="val-total">${r.hnos_efectivos}</span><span class="label-micro text-slate-400">EFECT.</span></div>
+                        <div class="stat-grid-box"><span class="val-total text-blue-300">${r.hnos_invitados}</span><span class="label-micro text-blue-400">INVIT.</span></div>
+                        <div class="stat-grid-box bg-yellow-500/5"><span class="val-total text-yellow-500">${r.convertidos || 0}</span><span class="label-micro text-yellow-600">CONVERT.</span></div>
+                        <div class="stat-grid-box"><span class="val-total text-green-400">${r.ninos_cristianos}</span><span class="label-micro text-green-500">NIÑ. CRIS.</span></div>
+                        <div class="stat-grid-box"><span class="val-total text-green-300">${r.ninos_amigos}</span><span class="label-micro text-green-500">NIÑ. AMIG.</span></div>
+                        <div class="stat-grid-box"><span class="val-total text-purple-400">${r.adultos_amigos}</span><span class="label-micro text-purple-500">ADUL. AMIG.</span></div>
+                        <div class="stat-grid-box"><span class="val-total text-cyan-400">${r.bautizados}</span><span class="label-micro text-cyan-500">BAUTIZADOS</span></div>
+                        <div class="stat-grid-box"><span class="val-total text-orange-400">${r.nuevos_creyentes}</span><span class="label-micro text-orange-500">NUEV. CREY.</span></div>
+                        <button onclick="eliminarReporte('${r.id}')" class="bg-red-500/10 border border-red-500/20 rounded-xl flex flex-col items-center justify-center p-1">
+                            <span class="text-[12px]">🗑️</span>
+                            <span class="text-[7px] font-black text-red-500 uppercase">BORRAR</span>
+                        </button>
+                    </div>
+                </div>`;
+            });
+        }
+
+       function prepararAnalisis() {
+    const lideres = [...new Set(datosGlobales.map(r => r.lider))];
+    const select = document.getElementById('selectLider');
+    select.innerHTML = '<option value="">Selecciona un líder...</option>';
+    lideres.forEach(l => select.innerHTML += `<option value="${l}">${l}</option>`);
+
+    // --- 1. GRÁFICA DE BARRAS MEJORADA (CRECIMIENTO) ---
+    const ultimos = lideres.map(l => {
+        const h = datosGlobales.filter(r => r.lider === l).sort((a,b) => new Date(b.fecha_reporte) - new Date(a.fecha_reporte));
+        return { 
+            lider: l, 
+            actual: h[0]?.total_general || 0, 
+            pasado: h[1]?.total_general || 0 
+        };
+    });
+
+    const ctxG = document.getElementById('chartGlobal').getContext('2d');
+    if(gGlobal) gGlobal.destroy();
+    gGlobal = new Chart(ctxG, {
+        type: 'bar',
+        data: {
+            labels: ultimos.map(r => r.lider),
+            datasets: [{
+                label: 'Asistencia Actual',
+                data: ultimos.map(r => r.actual),
+                // Color dinámico: Azul si subió/igual, Naranja si bajó
+                backgroundColor: ultimos.map(r => r.actual >= r.pasado ? '#3b82f6' : '#f97316'),
+                borderRadius: 8
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const d = ultimos[context.dataIndex];
+                            const diff = d.actual - d.pasado;
+                            return `Sem. Pasada: ${d.pasado} (${diff >= 0 ? '+' : ''}${diff})`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // --- 2. TABLA DE ALERTAS Y RENDIMIENTO ---
+    const tabla = document.getElementById('tabla-comparativa');
+    const alertas = document.getElementById('alertas-criticas');
+    tabla.innerHTML = ""; alertas.innerHTML = "";
+    
+    lideres.forEach(l => {
+        const h = datosGlobales.filter(r => r.lider === l).sort((a,b) => new Date(b.fecha_reporte) - new Date(a.fecha_reporte));
+        if (h.length >= 2) {
+            const act = h[0].total_general; 
+            const ant = h[1].total_general;
+            const ratio = act / ant;
+            
+            let status, color, icon;
+            if (ratio < 0.55) {
+                status = "CRÍTICO"; color = "text-red-500"; icon = "🚨";
+                alertas.innerHTML += `
+                    <div class="bg-red-500/10 border-l-4 border-red-500 p-3 rounded-r-xl mb-2">
+                        <p class="text-[10px] font-black text-red-500 uppercase">Alerta Roja: ${l}</p>
+                        <p class="text-[9px] text-red-200">Bajón del ${( (1-ratio)*100 ).toFixed(0)}% respecto a la semana anterior.</p>
+                    </div>`;
+            } else if (act > ant) { 
+                status = "Subiendo"; color = "text-green-400"; icon = "📈"; 
+            } else { 
+                status = "Estable"; color = "text-slate-400"; icon = "➖"; 
+            }
+            
+           // Definimos la variable de convertidos para que no de error
+const conv = h[0].convertidos; 
+
+tabla.innerHTML += `
+    <tr class="border-b border-slate-700/50 hover:bg-slate-800/30 transition-colors">
+        <td class="py-3 font-bold uppercase text-[10px] truncate max-w-[90px] text-slate-300" title="${l}">
+            ${l}
+        </td>
+        <td class="py-3 text-center text-slate-400 font-medium">
+            ${ant}
+        </td>
+        <td class="py-3 text-center font-black text-white text-lg">
+            ${act}
+        </td>
+        <td class="py-3 text-center text-emerald-400 font-bold">
+            ${conv || 0}
+        </td>
+        <td class="py-3 text-right font-black ${color} text-[10px] whitespace-nowrap">
+            ${icon} ${status}
+        </td>
+    </tr>`;
+        }
+    });
+}
+
+        function dibujarLineaIndividual() {
+            const lider = document.getElementById('selectLider').value;
+            if(!lider) return;
+            const hist = datosGlobales.filter(r => r.lider === lider).reverse();
+            const ctxI = document.getElementById('chartIndividual').getContext('2d');
+            if(gIndividual) gIndividual.destroy();
+            gIndividual = new Chart(ctxI, {
+                type: 'line',
+                data: {
+                    labels: hist.map(r => r.fecha_reporte),
+                    datasets: [{ label: 'Asistencia', data: hist.map(r => r.total_general), borderColor: '#3b82f6', tension: 0.3, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+ function cambiarSeccion(sec) {
+    // Control de visibilidad de capas
+    document.getElementById('sec-inicio').classList.toggle('hidden', sec !== 'inicio');
+    document.getElementById('sec-analisis').classList.toggle('hidden', sec !== 'analisis');
+    document.getElementById('sec-mensual').classList.toggle('hidden', sec !== 'mensual');
+    
+    // Control de botones activos
+    document.getElementById('nav-inicio').classList.toggle('active', sec === 'inicio');
+    document.getElementById('nav-mensual').classList.toggle('active', sec === 'mensual');
+    document.getElementById('nav-analisis').classList.toggle('active', sec === 'analisis');
+
+    // Disparar cálculos según sección
+    if (sec === 'mensual') prepararReporteMensual();
+    if (sec === 'analisis') prepararAnalisis();
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+        async function eliminarReporte(id) {
+            if(confirm("¿Seguro que deseas eliminar este informe?")) {
+                await _supabase.from('reportes').delete().eq('id', id);
+                cargarTodo();
+            }
+        }
+
+        function exportarExcel() {
+            const ws = XLSX.utils.json_to_sheet(datosGlobales);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "SantuarioData");
+            XLSX.writeFile(wb, "Reporte_General_Santuario.xlsx");
+        }
+
+        function aplicarFiltroFecha() {
+            const desde = document.getElementById('fecha-desde').value;
+            const hasta = document.getElementById('fecha-hasta').value;
+
+            if (!desde || !hasta) {
+                alert("Selecciona un rango de fechas (Desde - Hasta)");
+                return;
+            }
+
+            // Filtrar los datos que ya bajamos de Supabase
+            const datosFiltrados = datosGlobales.filter(r => {
+                return r.fecha_reporte >= desde && r.fecha_reporte <= hasta;
+            });
+
+            // Actualizar la pantalla con los datos del historial
+            renderizarListaLideres(datosFiltrados);
+            procesarConsolidado(datosFiltrados);
+        }
+
+        let gMensual; // Variable para resetear la gráfica
+
+function prepararReporteMensual() {
+    const ahora = new Date();
+    const mesActual = ahora.getMonth();
+    const añoActual = ahora.getFullYear();
+    const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    
+    document.getElementById('nombre-mes').innerText = nombresMeses[mesActual] + " " + añoActual;
+
+    // Filtramos solo los datos del mes presente
+    const datosMes = datosGlobales.filter(r => {
+        const f = new Date(r.fecha_reporte);
+        return f.getMonth() === mesActual && f.getFullYear() === añoActual;
+    });
+
+    // Agrupamos totales por líder
+    const resumen = {};
+    let granTotal = 0;
+    datosMes.forEach(r => {
+        resumen[r.lider] = (resumen[r.lider] || 0) + (Number(r.total_general) || 0);
+        granTotal += (Number(r.total_general) || 0);
+    });
+
+    document.getElementById('total-mes').innerText = granTotal;
+
+    // Dibujamos la gráfica
+    const ctxM = document.getElementById('chartMensual').getContext('2d');
+    if(gMensual) gMensual.destroy();
+   gMensual = new Chart(ctxM, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(resumen),
+        datasets: [{
+            label: 'Asistencia Total Mes',
+            data: Object.values(resumen),
+            backgroundColor: '#a855f7',
+            borderRadius: 8
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        // --- AQUÍ ESTÁ EL TRUCO DEL CLIC ---
+        onClick: (e, activeEls) => {
+            if (activeEls.length > 0) {
+                const index = activeEls[0].index;
+                const nombreLider = Object.keys(resumen)[index];
+                mostrarDetalleMensual(nombreLider, datosMes);
+            }
+        }
+    }
+});
+}
+function mostrarDetalleMensual(lider, datosDelMes) {
+    const contenedor = document.getElementById('detalle-lider-mes');
+    const titulo = document.getElementById('det-nombre-lider');
+    const lista = document.getElementById('lista-informes-mes');
+
+    contenedor.classList.remove('hidden');
+    titulo.innerText = lider;
+    lista.innerHTML = ""; 
+
+    // 1. Filtrar y ordenar informes del líder por fecha
+    const informesLider = datosDelMes
+        .filter(d => d.lider === lider)
+        .sort((a, b) => new Date(a.fecha_reporte) - new Date(b.fecha_reporte));
+
+    // 2. Preparar datos para la mini gráfica
+    const etiquetas = informesLider.map(inf => new Date(inf.fecha_reporte).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }));
+    const valores = informesLider.map(inf => inf.total_general);
+
+    // 3. Dibujar la mini gráfica de línea
+    const ctxD = document.getElementById('chartDetalleLider').getContext('2d');
+    if(gDetalleLider) gDetalleLider.destroy();
+    
+    gDetalleLider = new Chart(ctxD, {
+        type: 'line',
+        data: {
+            labels: etiquetas,
+            datasets: [{
+                data: valores,
+                borderColor: '#a855f7',
+                backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { display: false } },
+                y: { display: false } // Ocultamos el eje Y para que se vea más limpio
+            }
+        }
+    });
+
+    // 4. Llenar la lista de texto (Debajo de la gráfica)
+    informesLider.forEach(inf => {
+        const fecha = new Date(inf.fecha_reporte).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        lista.innerHTML += `
+            <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-700">
+                <span class="text-slate-400 text-[10px] font-bold uppercase">${fecha}</span>
+                <div class="flex items-center gap-4">
+                    <span class="text-[10px] text-emerald-400 font-bold">Conv: ${inf.convertidos || 0}</span>
+                    <span class="text-white font-black">Total: ${inf.total_general}</span>
+                </div>
+            </div>
+        `;
+    });
+
+
+
+    contenedor.scrollIntoView({ behavior: 'smooth' });
+}
+
+// --- GESTIÓN DE LÍDERES OFICIALES (VERSIÓN ÚNICA Y CORREGIDA) ---
+
+async function cargarLideresOficiales() {
+    const { data, error } = await _supabase
+        .from('lideres')
+        .select('*')
+        .order('nombre', { ascending: true });
+
+    const contenedor = document.getElementById('lista-lideres-db');
+    if (!contenedor) return;
+    
+    contenedor.innerHTML = "";
+    if (error) {
+        console.error("Error cargando líderes:", error);
+        return;
+    }
+
+    if (data) {
+        data.forEach(l => {
+            contenedor.innerHTML += `
+                <div class="flex justify-between items-center bg-slate-800/40 p-3 rounded-xl border border-white/5 mb-2">
+                    <span class="text-[11px] font-bold uppercase text-slate-300">${l.nombre}</span>
+                    <button onclick="eliminarLiderOficial('${l.id}')" class="text-red-500 hover:text-red-400 p-1 font-black">✕</button>
+                </div>`;
+        });
+    }
+}
+
+async function agregarLiderOficial() {
+    const input = document.getElementById('nuevoLider');
+    let nombreRaw = input.value.trim();
+    
+    if (!nombreRaw) {
+        alert("Escribe un nombre primero");
+        return;
+    }
+
+    // ✨ TRUCO: Convertir a "Nombre De Formato Correcto"
+    const nombreLimpio = nombreRaw
+        .toLowerCase()
+        .split(' ')
+        .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1))
+        .join(' ');
+
+    // Insertamos el nombre ya formateado
+    const { error } = await _supabase
+        .from('lideres')
+        .insert([{ nombre: nombreLimpio }]);
+    
+    if (error) {
+        console.error("Error de Supabase:", error);
+        if (error.code === "23505") {
+            alert("❌ Error: " + nombreLimpio + " ya está registrado.");
+        } else {
+            alert("❌ No se pudo agregar: " + error.message);
+        }
+    } else {
+        input.value = "";
+        alert("✅ " + nombreLimpio + " añadido con éxito");
+        cargarLideresOficiales(); 
+    }
+}
+
+async function eliminarLiderOficial(id) {
+    if (confirm("¿Seguro que deseas eliminar este líder de la lista oficial?")) {
+        const { error } = await _supabase
+            .from('lideres')
+            .delete()
+            .eq('id', id);
+            
+        if (error) alert("Error al eliminar");
+        else cargarLideresOficiales();
+    }
+}
+
+// Única llamada al cargar la página
+window.onload = () => { 
+    cargarTodo(); 
+    cargarLideresOficiales(); 
+};
+    </script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte GFC - Santuario de Dios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; margin: 0; min-height: 100vh; }
+        
+        .aurora { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #020617; overflow: hidden; }
+        .glow-1 { position: absolute; width: 600px; height: 600px; background: #1e1b4b; filter: blur(120px); opacity: 0.4; top: -10%; left: -10%; animation: move 20s infinite alternate; }
+        .glow-2 { position: absolute; width: 500px; height: 500px; background: #3b82f6; filter: blur(120px); opacity: 0.15; bottom: -10%; right: -10%; animation: move 15s infinite alternate-reverse; }
+        @keyframes move { from { transform: translate(-10%, -10%) rotate(0deg); } to { transform: translate(20%, 20%) rotate(10deg); } }
+        
+        .glass { 
+            background: rgba(30, 41, 59, 0.45); 
+            backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="text-white p-4 pb-12">
+    <div class="aurora">
+        <div class="glow-1"></div>
+        <div class="glow-2"></div>
+    </div>
+
+    <div class="max-w-2xl mx-auto glass p-8 rounded-[40px] shadow-2xl mt-5">
+        <div class="text-center mb-8">
+            <div class="relative inline-block mb-4">
+                <div class="absolute inset-0 bg-blue-500 blur-3xl opacity-30 rounded-full"></div>
+                <img src="https://i.ibb.co/mC64j5T6/Adobe-Express-file-1.png" class="relative w-24 h-24 mx-auto object-contain drop-shadow-2xl">
+            </div>
+            <h1 class="text-3xl font-black text-white uppercase tracking-tighter italic leading-none">Santuario de Dios</h1>
+            <p class="text-blue-400 text-[10px] font-black tracking-[0.3em] uppercase opacity-80 mt-2">Reporte Digital de G.F.C</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-slate-900/40 p-5 rounded-[30px] border border-white/5">
+            <div>
+                
+              <div>
+    <label class="block text-[10px] text-blue-300 uppercase font-bold mb-1 ml-1">Nombre del Líder</label>
+    <input type="text" id="lider" placeholder="Ej: Bryan Mata" class="w-full bg-slate-800/50 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-white transition-all">
+</div>
+            </div>
+            <div>
+                <label class="block text-[10px] text-blue-300 uppercase font-bold mb-1 ml-1">Zona</label>
+                <input type="text" id="zona" placeholder="Nombre de zona" class="w-full bg-slate-800/50 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-white transition-all">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-[10px] text-blue-300 uppercase font-bold mb-1 ml-1">Fecha del Grupo</label>
+                <input type="date" id="fecha" class="w-full bg-slate-800/50 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-white transition-all">
+            </div>
+        </div>
+
+        <h3 class="text-xs font-black text-slate-400 mb-4 uppercase tracking-[0.2em] ml-2">Asistencia Detallada</h3>
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <script>
+                const config = [
+                    {id: 'bautizados', label: 'Bautizados'},
+                    {id: 'nuevosCreyentes', label: 'Nuevos Creyentes'},
+                    {id: 'convertidos', label: 'Convertidos'},
+                    {id: 'hnosEfectivos', label: 'Hnos. Efectivos'},
+                    {id: 'hnosInvitados', label: 'Hnos. Invitados'},
+                    {id: 'ninosCristianos', label: 'Niños Cristianos'},
+                    {id: 'ninosAmigos', label: 'Niños Amigos'},
+                    {id: 'adultosAmigos', label: 'Adultos Amigos'}
+                ];
+                document.write(config.map(c => `
+                    <div class="bg-slate-900/40 p-4 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all">
+                        <label class="text-[9px] text-slate-500 uppercase font-bold block mb-1">${c.label}</label>
+                        <input type="number" id="${c.id}" value="0" oninput="calcularTotal()" class="w-full bg-transparent text-xl font-black outline-none" onclick="this.select()">
+                    </div>
+                `).join(''));
+            </script>
+        </div>
+
+        <div class="bg-blue-900/30 p-6 rounded-[32px] border border-blue-500/20 mb-6 shadow-inner">
+            <p class="text-center text-[10px] text-blue-300 font-black uppercase mb-1 tracking-widest">Asistencia Total General</p>
+            <div id="totalGeneral" class="text-6xl font-black text-center text-white drop-shadow-xl">0</div>
+        </div>
+
+        <button onclick="enviarInforme()" id="btnGuardar" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 py-5 rounded-3xl font-black text-white shadow-[0_20px_50px_rgba(30,64,175,0.3)] active:scale-95 transition-all uppercase tracking-[0.2em] text-xs">
+            🚀 Enviar Reporte al Altar
+        </button>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://oowozsrtlesoxghsleyl.supabase.co';
+        const supabaseKey = 'sb_publishable_6YVGWQYZf36tkrSgaW4-Ww_nTTlIM_z'; 
+        const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function calcularTotal() {
+            const ids = ['bautizados', 'nuevosCreyentes', 'convertidos', 'hnosEfectivos', 'hnosInvitados', 'ninosCristianos', 'ninosAmigos', 'adultosAmigos'];
+            let suma = 0;
+            ids.forEach(id => { suma += Number(document.getElementById(id).value) || 0; });
+            document.getElementById('totalGeneral').innerText = suma;
+        }
+async function enviarInforme() {
+    const btn = document.getElementById('btnGuardar');
+    const liderEscrito = document.getElementById('lider').value.trim();
+    const fecha = document.getElementById('fecha').value;
+    
+    if (!liderEscrito || !fecha) { 
+        alert("⚠️ Por favor completa tu nombre y la fecha"); 
+        return; 
+    }
+
+    try {
+        btn.disabled = true; 
+        btn.innerText = "🔍 VALIDANDO...";
+
+        // 1. Buscamos el nombre EXACTO en la tabla 'lideres'
+        // Usamos .eq para que sea una comparación de igualdad estricta
+        const { data: liderEncontrado, error: errorBusqueda } = await _supabase
+            .from('lideres')
+            .select('nombre')
+            .eq('nombre', liderEscrito) 
+            .maybeSingle();
+
+        // 2. Si no lo encuentra (porque escribió minúsculas o el nombre no existe)
+        if (!liderEncontrado) {
+            alert("❌ ERROR: LÍDER NO REGISTRADO\n\nEl nombre '" + liderEscrito + "' no aparece en la lista oficial.\n\nVerifica las Mayúsculas y Tildes (Ej: Bryan Mata).");
+            btn.disabled = false; 
+            btn.innerText = "🚀 Enviar Reporte al Altar";
+            return;
+        }
+
+        // 3. Si el nombre es correcto, procedemos a guardar el reporte
+        btn.innerText = "🚀 GUARDANDO...";
+        const datos = {
+            lider: liderEncontrado.nombre, 
+            zona: document.getElementById('zona').value, 
+            fecha_reporte: fecha,
+            bautizados: parseInt(document.getElementById('bautizados').value) || 0,
+            nuevos_creyentes: parseInt(document.getElementById('nuevosCreyentes').value) || 0,
+            convertidos: parseInt(document.getElementById('convertidos').value) || 0,
+            hnos_efectivos: parseInt(document.getElementById('hnosEfectivos').value) || 0,
+            hnos_invitados: parseInt(document.getElementById('hnosInvitados').value) || 0,
+            ninos_cristianos: parseInt(document.getElementById('ninosCristianos').value) || 0,
+            ninos_amigos: parseInt(document.getElementById('ninosAmigos').value) || 0,
+            adultos_amigos: parseInt(document.getElementById('adultosAmigos').value) || 0,
+            total_general: parseInt(document.getElementById('totalGeneral').innerText)
+        };
+
+        const { error: insertError } = await _supabase.from('reportes').insert([datos]);
+        if (insertError) throw insertError;
+
+        alert("✅ ¡Gloria a Dios! Informe guardado.");
+        location.reload(); 
+
+    } catch (error) {
+        alert("❌ Error: " + error.message);
+        btn.disabled = false; 
+        btn.innerText = "🚀 Enviar Reporte al Altar";
+    }
+}
+async function actualizarSelectLideresReporte() {
+    const { data, error } = await _supabase
+        .from('lideres')
+        .select('*') // Traemos todo para evitar errores de nombre de columna
+        .order('nombre', { ascending: true });
+
+    const select = document.getElementById('lider');
+    if (!select) return;
+
+    if (error) {
+        console.error("Error cargando líderes:", error.message);
+        return;
+    }
+
+    if (data) {
+        select.innerHTML = '<option value="">-- Selecciona tu nombre --</option>';
+        data.forEach(l => {
+            // Usamos 'nombre' o 'lider' según como esté en tu base de datos
+            const nombreFinal = l.nombre || l.lider; 
+            if (nombreFinal) {
+                select.innerHTML += `<option value="${nombreFinal}">${nombreFinal}</option>`;
+            }
+        });
+    }
+}
+      
+    
+ window.onload = () => { 
+    // Ya no necesitamos cargar listas
+};
+    </script>
+</body>
+</html>
