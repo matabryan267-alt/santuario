@@ -22,6 +22,13 @@
             border: 1px solid rgba(255, 255, 255, 0.1); 
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
+        
+        select option { background-color: #0f172a; color: white; }
+        
+        /* Estilos para el scrollbar de la lista de reportes */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.5); border-radius: 10px; }
     </style>
 </head>
 <body class="text-white p-4 pb-12">
@@ -31,6 +38,7 @@
     </div>
 
     <div class="max-w-2xl mx-auto glass p-8 rounded-[40px] shadow-2xl mt-5">
+        
         <div class="text-center mb-8">
             <div class="relative inline-block mb-4">
                 <div class="absolute inset-0 bg-blue-500 blur-3xl opacity-30 rounded-full"></div>
@@ -42,11 +50,13 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-slate-900/40 p-5 rounded-[30px] border border-white/5">
             <div>
-                
-              <div>
-    <label class="block text-[10px] text-blue-300 uppercase font-bold mb-1 ml-1">Nombre del Líder</label>
-    <input type="text" id="lider" placeholder="Ej: Bryan Mata" class="w-full bg-slate-800/50 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-white transition-all">
-</div>
+                <div class="flex justify-between items-end mb-1 ml-1">
+                    <label class="block text-[10px] text-blue-300 uppercase font-bold">Nombre del Líder</label>
+                    <button onclick="editarMiUltimoReporte()" class="text-[9px] text-yellow-400 hover:text-yellow-300 font-bold uppercase tracking-wider transition-all">✏️ Editar Último</button>
+                </div>
+                <select id="lider" onchange="cargarEstadisticas(this.value)" class="w-full bg-slate-800/50 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 text-white transition-all appearance-none cursor-pointer border border-transparent hover:border-white/10">
+                    <option value="">Cargando líderes...</option>
+                </select>
             </div>
             <div>
                 <label class="block text-[10px] text-blue-300 uppercase font-bold mb-1 ml-1">Zona</label>
@@ -88,6 +98,27 @@
         <button onclick="enviarInforme()" id="btnGuardar" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 py-5 rounded-3xl font-black text-white shadow-[0_20px_50px_rgba(30,64,175,0.3)] active:scale-95 transition-all uppercase tracking-[0.2em] text-xs">
             🚀 Enviar Reporte al Altar
         </button>
+
+        <div class="mt-10 pt-8 border-t border-white/10">
+            <h3 class="text-xl font-black text-white uppercase tracking-tighter italic mb-4">📊 Mis Estadísticas (<span id="yearLabel"></span>)</h3>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-indigo-900/40 p-4 rounded-2xl border border-indigo-500/30 text-center">
+                    <p class="text-[10px] text-indigo-300 font-bold uppercase tracking-widest mb-1">Total Asistencia</p>
+                    <p id="statTotal" class="text-3xl font-black text-white">0</p>
+                </div>
+                <div class="bg-emerald-900/40 p-4 rounded-2xl border border-emerald-500/30 text-center">
+                    <p class="text-[10px] text-emerald-300 font-bold uppercase tracking-widest mb-1">Conversiones</p>
+                    <p id="statConversiones" class="text-3xl font-black text-white">0</p>
+                </div>
+            </div>
+
+            <h3 class="text-xs font-black text-slate-400 mb-3 uppercase tracking-[0.2em] ml-2">Mis Últimos Informes</h3>
+            <div id="listaReportes" class="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                <p class="text-center text-slate-500 text-xs py-4">Selecciona tu nombre arriba para ver tu historial.</p>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -95,101 +126,220 @@
         const supabaseKey = 'sb_publishable_6YVGWQYZf36tkrSgaW4-Ww_nTTlIM_z'; 
         const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
+        let idReporteEditando = null; 
+
         function calcularTotal() {
             const ids = ['bautizados', 'nuevosCreyentes', 'convertidos', 'hnosEfectivos', 'hnosInvitados', 'ninosCristianos', 'ninosAmigos', 'adultosAmigos'];
             let suma = 0;
             ids.forEach(id => { suma += Number(document.getElementById(id).value) || 0; });
             document.getElementById('totalGeneral').innerText = suma;
         }
-async function enviarInforme() {
-    const btn = document.getElementById('btnGuardar');
-    const liderEscrito = document.getElementById('lider').value.trim();
-    const fecha = document.getElementById('fecha').value;
-    
-    if (!liderEscrito || !fecha) { 
-        alert("⚠️ Por favor completa tu nombre y la fecha"); 
-        return; 
-    }
 
-    try {
-        btn.disabled = true; 
-        btn.innerText = "🔍 VALIDANDO...";
+        // 1. CARGAR LÍDERES EN EL SELECT
+        async function actualizarSelectLideresReporte() {
+            const select = document.getElementById('lider');
+            const { data, error } = await _supabase
+                .from('lideres')
+                .select('*')
+                .order('nombre', { ascending: true });
 
-        // 1. Buscamos el nombre EXACTO en la tabla 'lideres'
-        // Usamos .eq para que sea una comparación de igualdad estricta
-        const { data: liderEncontrado, error: errorBusqueda } = await _supabase
-            .from('lideres')
-            .select('nombre')
-            .eq('nombre', liderEscrito) 
-            .maybeSingle();
+            if (error) {
+                console.error("Error cargando líderes:", error.message);
+                select.innerHTML = '<option value="">Error al cargar</option>';
+                return;
+            }
 
-        // 2. Si no lo encuentra (porque escribió minúsculas o el nombre no existe)
-        if (!liderEncontrado) {
-            alert("❌ ERROR: LÍDER NO REGISTRADO\n\nEl nombre '" + liderEscrito + "' no aparece en la lista oficial.\n\nVerifica las Mayúsculas y Tildes (Ej: Bryan Mata).");
-            btn.disabled = false; 
-            btn.innerText = "🚀 Enviar Reporte al Altar";
-            return;
+            if (data) {
+                select.innerHTML = '<option value="">-- Selecciona tu nombre --</option>';
+                data.forEach(l => {
+                    const nombreFinal = l.nombre || l.lider; 
+                    if (nombreFinal) {
+                        select.innerHTML += `<option value="${nombreFinal}">${nombreFinal}</option>`;
+                    }
+                });
+            }
         }
 
-        // 3. Si el nombre es correcto, procedemos a guardar el reporte
-        btn.innerText = "🚀 GUARDANDO...";
-        const datos = {
-            lider: liderEncontrado.nombre, 
-            zona: document.getElementById('zona').value, 
-            fecha_reporte: fecha,
-            bautizados: parseInt(document.getElementById('bautizados').value) || 0,
-            nuevos_creyentes: parseInt(document.getElementById('nuevosCreyentes').value) || 0,
-            convertidos: parseInt(document.getElementById('convertidos').value) || 0,
-            hnos_efectivos: parseInt(document.getElementById('hnosEfectivos').value) || 0,
-            hnos_invitados: parseInt(document.getElementById('hnosInvitados').value) || 0,
-            ninos_cristianos: parseInt(document.getElementById('ninosCristianos').value) || 0,
-            ninos_amigos: parseInt(document.getElementById('ninosAmigos').value) || 0,
-            adultos_amigos: parseInt(document.getElementById('adultosAmigos').value) || 0,
-            total_general: parseInt(document.getElementById('totalGeneral').innerText)
-        };
-
-        const { error: insertError } = await _supabase.from('reportes').insert([datos]);
-        if (insertError) throw insertError;
-
-        alert("✅ ¡Gloria a Dios! Informe guardado.");
-        location.reload(); 
-
-    } catch (error) {
-        alert("❌ Error: " + error.message);
-        btn.disabled = false; 
-        btn.innerText = "🚀 Enviar Reporte al Altar";
-    }
-}
-async function actualizarSelectLideresReporte() {
-    const { data, error } = await _supabase
-        .from('lideres')
-        .select('*') // Traemos todo para evitar errores de nombre de columna
-        .order('nombre', { ascending: true });
-
-    const select = document.getElementById('lider');
-    if (!select) return;
-
-    if (error) {
-        console.error("Error cargando líderes:", error.message);
-        return;
-    }
-
-    if (data) {
-        select.innerHTML = '<option value="">-- Selecciona tu nombre --</option>';
-        data.forEach(l => {
-            // Usamos 'nombre' o 'lider' según como esté en tu base de datos
-            const nombreFinal = l.nombre || l.lider; 
-            if (nombreFinal) {
-                select.innerHTML += `<option value="${nombreFinal}">${nombreFinal}</option>`;
+        // 2. ESTADÍSTICAS DEL AÑO ACTUAL (AHORA RECIBE EL LÍDER SELECCIONADO)
+        async function cargarEstadisticas(liderSeleccionado) {
+            const anioActual = new Date().getFullYear();
+            document.getElementById('yearLabel').innerText = anioActual;
+            
+            // Si el usuario vuelve a la opción vacía "-- Selecciona tu nombre --"
+            if (!liderSeleccionado) {
+                document.getElementById('statTotal').innerText = "0";
+                document.getElementById('statConversiones').innerText = "0";
+                document.getElementById('listaReportes').innerHTML = '<p class="text-center text-slate-500 text-xs py-4">Selecciona tu nombre arriba para ver tu historial.</p>';
+                return;
             }
-        });
-    }
-}
-      
-    
- window.onload = () => { 
-    // Ya no necesitamos cargar listas
-};
+
+            document.getElementById('listaReportes').innerHTML = '<p class="text-center text-slate-500 text-xs py-4">Cargando tus reportes...</p>';
+
+            const fechaInicio = `${anioActual}-01-01`;
+            const fechaFin = `${anioActual}-12-31`;
+
+            // Filtramos específicamente por el líder seleccionado
+            const { data, error } = await _supabase
+                .from('reportes')
+                .select('*')
+                .eq('lider', liderSeleccionado) // <- Filtro clave
+                .gte('fecha_reporte', fechaInicio)
+                .lte('fecha_reporte', fechaFin)
+                .order('fecha_reporte', { ascending: false }); 
+
+            if (error) {
+                document.getElementById('listaReportes').innerHTML = '<p class="text-red-400 text-xs text-center py-2">Error cargando historial.</p>';
+                return;
+            }
+
+            let totalAsistenciaAnual = 0;
+            let totalConversiones = 0;
+            let htmlTabla = '';
+
+            if (data && data.length > 0) {
+                data.forEach(r => {
+                    totalAsistenciaAnual += (r.total_general || 0);
+                    totalConversiones += (r.convertidos || 0) + (r.nuevos_creyentes || 0);
+
+                    let fechaObj = new Date(r.fecha_reporte);
+                    fechaObj.setMinutes(fechaObj.getMinutes() + fechaObj.getTimezoneOffset());
+                    let fechaCorta = fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+
+                    htmlTabla += `
+                        <div class="bg-slate-800/40 p-3 rounded-2xl flex justify-between items-center border border-white/5 hover:border-blue-500/30 transition-all mb-2">
+                            <div>
+                                <span class="text-[11px] text-blue-300 font-bold uppercase">${r.lider}</span><br>
+                                <span class="text-[10px] text-slate-400">📅 ${fechaCorta} | 📍 ${r.zona}</span>
+                            </div>
+                            <div class="bg-blue-900/50 px-3 py-1 rounded-lg border border-blue-500/20">
+                                <span class="text-sm font-black text-white">${r.total_general}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                document.getElementById('listaReportes').innerHTML = htmlTabla;
+            } else {
+                document.getElementById('listaReportes').innerHTML = '<p class="text-slate-500 text-xs text-center py-4">Aún no tienes reportes registrados este año.</p>';
+            }
+
+            document.getElementById('statTotal').innerText = totalAsistenciaAnual;
+            document.getElementById('statConversiones').innerText = totalConversiones;
+        }
+
+        // 3. EDITAR ÚLTIMO REPORTE DEL LÍDER
+        async function editarMiUltimoReporte() {
+            const liderSeleccionado = document.getElementById('lider').value;
+            
+            if (!liderSeleccionado) {
+                alert("⚠️ Selecciona tu nombre en la lista primero para buscar tu último reporte.");
+                return;
+            }
+
+            const btn = document.getElementById('btnGuardar');
+            btn.innerText = "🔍 BUSCANDO...";
+
+            const { data, error } = await _supabase
+                .from('reportes')
+                .select('*')
+                .eq('lider', liderSeleccionado)
+                .order('fecha_reporte', { ascending: false }) 
+                .limit(1)
+                .maybeSingle();
+
+            if (error || !data) {
+                alert(`No se encontraron reportes previos tuyos.`);
+                btn.innerText = "🚀 Enviar Reporte al Altar";
+                return;
+            }
+
+            idReporteEditando = data.id; 
+            document.getElementById('zona').value = data.zona || '';
+            document.getElementById('fecha').value = data.fecha_reporte || '';
+            document.getElementById('bautizados').value = data.bautizados || 0;
+            document.getElementById('nuevosCreyentes').value = data.nuevos_creyentes || 0;
+            document.getElementById('convertidos').value = data.convertidos || 0;
+            document.getElementById('hnosEfectivos').value = data.hnos_efectivos || 0;
+            document.getElementById('hnosInvitados').value = data.hnos_invitados || 0;
+            document.getElementById('ninosCristianos').value = data.ninos_cristianos || 0;
+            document.getElementById('ninosAmigos').value = data.ninos_amigos || 0;
+            document.getElementById('adultosAmigos').value = data.adultos_amigos || 0;
+            
+            calcularTotal();
+
+            btn.innerHTML = "🔄 ACTUALIZAR REPORTE";
+            btn.classList.replace('from-blue-600', 'from-yellow-600');
+            btn.classList.replace('to-indigo-600', 'to-orange-600');
+            btn.classList.replace('hover:from-blue-500', 'hover:from-yellow-500');
+            btn.classList.replace('hover:to-indigo-500', 'hover:to-orange-500');
+            
+            alert(`✅ Último reporte cargado con éxito. Modifica lo que necesites y presiona Actualizar.`);
+        }
+
+        // 4. GUARDAR O ACTUALIZAR
+        async function enviarInforme() {
+            const btn = document.getElementById('btnGuardar');
+            const liderSeleccionado = document.getElementById('lider').value;
+            const fecha = document.getElementById('fecha').value;
+            
+            if (!liderSeleccionado || !fecha) { 
+                alert("⚠️ Por favor selecciona tu nombre y la fecha del grupo."); 
+                return; 
+            }
+
+            try {
+                btn.disabled = true; 
+                btn.innerText = idReporteEditando ? "🔄 ACTUALIZANDO..." : "🚀 GUARDANDO...";
+
+                const datos = {
+                    lider: liderSeleccionado, 
+                    zona: document.getElementById('zona').value, 
+                    fecha_reporte: fecha,
+                    bautizados: parseInt(document.getElementById('bautizados').value) || 0,
+                    nuevos_creyentes: parseInt(document.getElementById('nuevosCreyentes').value) || 0,
+                    convertidos: parseInt(document.getElementById('convertidos').value) || 0,
+                    hnos_efectivos: parseInt(document.getElementById('hnosEfectivos').value) || 0,
+                    hnos_invitados: parseInt(document.getElementById('hnosInvitados').value) || 0,
+                    ninos_cristianos: parseInt(document.getElementById('ninosCristianos').value) || 0,
+                    ninos_amigos: parseInt(document.getElementById('ninosAmigos').value) || 0,
+                    adultos_amigos: parseInt(document.getElementById('adultosAmigos').value) || 0,
+                    total_general: parseInt(document.getElementById('totalGeneral').innerText)
+                };
+
+                if (idReporteEditando) {
+                    const { error: updateError } = await _supabase
+                        .from('reportes')
+                        .update(datos)
+                        .eq('id', idReporteEditando); 
+                    
+                    if (updateError) throw updateError;
+                    alert("✅ ¡Gloria a Dios! El informe fue ACTUALIZADO correctamente.");
+                } else {
+                    const { error: insertError } = await _supabase
+                        .from('reportes')
+                        .insert([datos]);
+                    
+                    if (insertError) throw insertError;
+                    alert("✅ ¡Gloria a Dios! Informe GUARDADO con éxito.");
+                }
+
+                location.reload(); 
+
+            } catch (error) {
+                alert("❌ Error: " + error.message);
+                btn.disabled = false; 
+                btn.innerText = idReporteEditando ? "🔄 ACTUALIZAR REPORTE" : "🚀 Enviar Reporte al Altar";
+            }
+        }
+
+        // Cargar todo al iniciar la página
+        window.onload = () => { 
+            actualizarSelectLideresReporte();
+            // Ya no llamamos cargarEstadisticas() aquí porque necesita un líder.
+            // Poner la fecha de hoy por defecto para agilizar
+            document.getElementById('fecha').valueAsDate = new Date();
+            // Colocar el año actual en la etiqueta
+            document.getElementById('yearLabel').innerText = new Date().getFullYear();
+        };
     </script>
 </body>
 </html>
